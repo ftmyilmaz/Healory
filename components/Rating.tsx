@@ -27,7 +27,7 @@ const Rating: React.FC<RatingProps> = ({ color }) => {
           onPress={() => handleRating(i)}
           style={styles.iconContainer}
         >
-          <AntDesign name={iconName} size={30} color={color} />
+          <AntDesign name={iconName as any} size={30} color={color} />
         </TouchableOpacity>
       );
     }

@@ -6,15 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Header from '../components/Header';
 import Input from '../components/Input';
-import OrSeparator from '../components/OrSeparator';
-import SocialButton from '../components/SocialButton';
 import { COLORS, icons, images, SIZES } from '../constants';
 import { authService } from '../services/auth/AuthService';
 import { logger } from '../services/logging/Logger';
-import { navigationService } from '../services/navigation/NavigationService';
+import { navigationService, ROUTES } from '../services/navigation/NavigationService';
 import { useTheme } from '../theme/ThemeProvider';
 import { validateInput } from '../utils/actions/formActions';
-import { ROUTES } from '../utils/constants/routes';
 import { reducer } from '../utils/reducers/formReducers';
 
 const isTestMode = true;
@@ -35,13 +32,15 @@ type Nav = {
     navigate: (value: string) => void
 }
 
-const Login = () => {
+const AdminLogin = () => {
+    console.log('🎯 [AdminLogin] Component rendered');
+    
+    const { colors, dark } = useTheme();
     const router = useRouter();
     const [formState, dispatchFormState] = useReducer(reducer, initialState);
     const [error, setError] = useState(null);
     const [isChecked, setChecked] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const { colors, dark } = useTheme();
 
     const inputChangedHandler = useCallback(
         (inputId: string, inputValue: string) => {
@@ -54,11 +53,13 @@ const Login = () => {
         }, [dispatchFormState]);
 
     useEffect(() => {
-        logger.info('LOGIN', 'Login screen mounted');
+        console.log('✅ [AdminLogin] Component mounted');
+        logger.info('ADMIN_LOGIN', 'Admin Login screen mounted');
         navigationService.setRouter(router);
 
         return () => {
-            logger.info('LOGIN', 'Login screen unmounted');
+            console.log('❌ [AdminLogin] Component unmounting');
+            logger.info('ADMIN_LOGIN', 'Admin Login screen unmounted');
         };
     }, [router]);
 
@@ -68,86 +69,59 @@ const Login = () => {
         }
     }, [error]);
 
-    // Handle unified login with role-based routing
     const handleLogin = async () => {
-        logger.info('LOGIN', 'Login button pressed');
+        console.log('🔐 [AdminLogin] Login button clicked');
+        logger.info('ADMIN_LOGIN', 'Login button pressed');
 
         const email = formState.inputValues.email;
         const password = formState.inputValues.password;
 
+        console.log('📧 [AdminLogin] Email:', email);
+        console.log('🔑 [AdminLogin] Password length:', password.length);
+
         if (!email || !password) {
-            logger.warn('LOGIN', 'Login attempt with empty fields');
+            console.warn('⚠️ [AdminLogin] Missing email or password');
+            logger.warn('ADMIN_LOGIN', 'Login attempt with empty fields');
             Alert.alert('Validation Error', 'Please enter both email and password');
             return;
         }
 
         setIsLoading(true);
-        logger.info('LOGIN', 'Starting authentication process', { email });
+        console.log('⏳ [AdminLogin] Logging in...');
+        logger.info('ADMIN_LOGIN', 'Starting authentication process', { email });
 
         try {
-            // Try admin login first
-            const adminResponse = await authService.loginAdmin({ email, password });
+            const response = await authService.loginAdmin({ email, password });
+            console.log('✅ [AdminLogin] Login response:', JSON.stringify(response, null, 2));
 
-            if (adminResponse.success && adminResponse.user) {
-                logger.success('LOGIN', 'Admin authentication successful', {
-                    userId: adminResponse.user.id,
-                    role: adminResponse.user.role
+            if (response.success && response.user) {
+                logger.success('ADMIN_LOGIN', 'Authentication successful', {
+                    userId: response.user.id,
+                    role: response.user.role
                 });
 
-                // Navigate to admin dashboard using replace to avoid back navigation issues
-                logger.info('LOGIN', 'Redirecting to Admin Dashboard');
+                logger.info('ADMIN_LOGIN', 'Navigating to admin dashboard');
+                console.log('✅ [AdminLogin] User is admin, navigating to dashboard');
+                console.log('🚀 [AdminLogin] Calling router.push("/admindashboard")');
                 
-                // Use setTimeout to ensure state updates are complete
-                setTimeout(() => {
-                    router.replace('/admindashboard');
-                }, 100);
-                return;
-            }
+                navigationService.navigate(ROUTES.ADMIN.DASHBOARD);
+                
+                console.log('✅ [AdminLogin] router.push called successfully');
 
-            // If admin login fails, try user login
-            logger.info('LOGIN', 'Attempting user authentication');
-            const userResponse = await authService.loginUser({ email, password });
-
-            if (userResponse.success && userResponse.user) {
-                logger.success('LOGIN', 'User authentication successful', {
-                    userId: userResponse.user.id,
-                    role: userResponse.user.role
-                });
-
-                // Navigate to main app
-                logger.info('LOGIN', 'Redirecting to Main App');
-                setTimeout(() => {
-                    router.replace('/(tabs)');
-                }, 100);
             } else {
-                logger.warn('LOGIN', 'Authentication failed', { error: userResponse.error });
-                Alert.alert('Login Failed', userResponse.error || 'Invalid credentials');
+                console.warn('⚠️ [AdminLogin] User is not admin, role:', response.user?.role);
+                logger.warn('ADMIN_LOGIN', 'Authentication failed', { error: response.error });
+                Alert.alert('Login Failed', response.error || 'Invalid admin credentials');
             }
         } catch (error) {
-            logger.error('LOGIN', 'Login error occurred', error);
+            console.error('❌ [AdminLogin] Login error:', error);
+            logger.error('ADMIN_LOGIN', 'Login error occurred', error);
             Alert.alert('Error', 'An unexpected error occurred during login');
         } finally {
             setIsLoading(false);
-            logger.debug('LOGIN', 'Login process completed');
+            console.log('🏁 [AdminLogin] Login process completed');
+            logger.debug('ADMIN_LOGIN', 'Login process completed');
         }
-    };
-
-    // Implementing apple authentication
-    const appleAuthHandler = () => {
-        logger.info('LOGIN', 'Apple authentication initiated');
-        console.log("Apple Authentication")
-    };
-
-    // Implementing facebook authentication
-    const facebookAuthHandler = () => {
-        logger.info('LOGIN', 'Facebook authentication initiated');
-        console.log("Facebook Authentication")
-    };
-
-    // Implementing google authentication
-    const googleAuthHandler = () => {
-        logger.info('LOGIN', 'Google authentication initiated');
-        console.log("Google Authentication")
     };
 
     return (
@@ -168,27 +142,28 @@ const Login = () => {
                     </View>
                     <Text style={[styles.title, {
                         color: dark ? COLORS.white : COLORS.black
-                    }]}>Login to Your Account</Text>
+                    }]}>Admin Login</Text>
+                    <Text style={[styles.subtitle, {
+                        color: dark ? COLORS.grayscale400 : COLORS.grayscale700
+                    }]}>Access Administrative Panel</Text>
                     <Input
                         id="email"
                         onInputChanged={inputChangedHandler}
                         errorText={formState.inputValidities['email']}
-                        placeholder="Email"
+                        placeholder="Admin Email"
                         placeholderTextColor={dark ? COLORS.grayTie : COLORS.black}
                         icon={icons.email}
                         keyboardType="email-address"
-                        value={formState.inputValues.email}
                     />
                     <Input
                         onInputChanged={inputChangedHandler}
                         errorText={formState.inputValidities['password']}
                         autoCapitalize="none"
                         id="password"
-                        placeholder="Password"
+                        placeholder="Admin Password"
                         placeholderTextColor={dark ? COLORS.grayTie : COLORS.black}
                         icon={icons.padlock}
                         secureTextEntry={true}
-                        value={formState.inputValues.password}
                     />
                     <View style={styles.checkBoxContainer}>
                         <Checkbox
@@ -202,43 +177,23 @@ const Login = () => {
                         }]}>Remember me</Text>
                     </View>
                     <Button
-                        title={isLoading ? "Logging in..." : "Login"}
+                        title={isLoading ? "Logging in..." : "Login as Admin"}
                         filled
                         onPress={handleLogin}
                         style={styles.button}
                         disabled={isLoading}
                     />
-                    <TouchableOpacity
-                        onPress={() => navigationService.navigate(ROUTES.AUTH.FORGOT_PASSWORD_METHODS)}>
-                        <Text style={styles.forgotPasswordBtnText}>Forgot the password?</Text>
-                    </TouchableOpacity>
-                    <View>
-
-                        <OrSeparator text="or continue with" />
-                        <View style={styles.socialBtnContainer}>
-                            <SocialButton
-                                icon={icons.appleLogo}
-                                onPress={appleAuthHandler}
-                                tintColor={dark ? COLORS.white : COLORS.black}
-                            />
-                            <SocialButton
-                                icon={icons.facebook}
-                                onPress={facebookAuthHandler}
-                            />
-                            <SocialButton
-                                icon={icons.google}
-                                onPress={googleAuthHandler}
-                            />
-                        </View>
-                    </View>
                 </ScrollView>
                 <View style={styles.bottomContainer}>
                     <Text style={[styles.bottomLeft, {
                         color: dark ? COLORS.white : COLORS.black
-                    }]}>Don&apos;t have an account ?</Text>
+                    }]}>Not an admin?</Text>
                     <TouchableOpacity
-                        onPress={() => navigationService.navigate(ROUTES.AUTH.SIGNUP)}>
-                        <Text style={styles.bottomRight}>{"  "}Sign Up</Text>
+                        onPress={() => {
+                            logger.info('ADMIN_LOGIN', 'Navigating to user login');
+                            navigationService.navigate(ROUTES.AUTH.LOGIN);
+                        }}>
+                        <Text style={styles.bottomRight}>{"  "}User Login</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -266,22 +221,24 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         marginVertical: 32
     },
-    center: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-    },
     title: {
         fontSize: 26,
         fontFamily: "bold",
         color: COLORS.black,
+        textAlign: "center",
+        marginBottom: 8
+    },
+    subtitle: {
+        fontSize: 16,
+        fontFamily: "regular",
+        color: COLORS.grayscale700,
         textAlign: "center",
         marginBottom: 22
     },
     checkBoxContainer: {
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center", // <--- Add this line
+        justifyContent: "center",
         marginVertical: 18,
         width: "100%",
     },
@@ -297,18 +254,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: "regular",
         color: COLORS.black,
-    },
-    socialTitle: {
-        fontSize: 19.25,
-        fontFamily: "medium",
-        color: COLORS.black,
-        textAlign: "center",
-        marginVertical: 26
-    },
-    socialBtnContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
     },
     bottomContainer: {
         flexDirection: "row",
@@ -334,14 +279,7 @@ const styles = StyleSheet.create({
         marginVertical: 6,
         width: SIZES.width - 32,
         borderRadius: 30
-    },
-    forgotPasswordBtnText: {
-        fontSize: 16,
-        fontFamily: "semiBold",
-        color: COLORS.primary,
-        textAlign: "center",
-        marginTop: 12
     }
 })
 
-export default Login
+export default AdminLogin
