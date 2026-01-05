@@ -8,6 +8,7 @@ interface InputProps extends TextInputProps {
     icon?: string;
     errorText?: string[];
     onInputChanged: (id: string, text: string) => void;
+    value?: string;
 }
 
 const Input: FC<InputProps> = (props) => {
@@ -50,6 +51,7 @@ const Input: FC<InputProps> = (props) => {
                 )}
                 <TextInput
                     {...props}
+                    defaultValue={props.value}
                     onChangeText={onChangeText}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
